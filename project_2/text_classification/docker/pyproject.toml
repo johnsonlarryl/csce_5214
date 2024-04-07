@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "text_classification"
+version = "0.1.0"
+description = ""
+authors = ["Akiharu Esashi <JAkiharuEsashi@my.unt.edu>",
+           "Jordan Ibarra, <jordanibarra@my.unt.edu>",
+           "Larry Johnson <johnson.larry.l@gmail.com>",
+           "Siripurapu Akhila <akhila1578@gmail.com>",
+           "Thomas McCullough <ThomasMccullough@my.unt.edu>"]
+
+[tool.poetry.dependencies]
+fastapi = "0.68.0"
+hypothesis = "^6.54.4"
+python = ">=3.9.5,<3.10"
+python_multipart = "0.0.6"
+uvicorn = "0.15.0"
+spacy = "3.7.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

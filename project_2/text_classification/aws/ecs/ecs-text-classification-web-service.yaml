@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  ECRRepositoryUri:
+    Type: String
+    Description: 'URI of the Elastic Container Registry (ECR) Text Classification repository'
+    Default: '491914570594.dkr.ecr.us-east-1.amazonaws.com/csce5214-repo' # <Use Mustache Template>
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0  # Allow SSH access from any IP address
+      VpcId: vpc-ea19bf90  # Specify your VPC ID <Use Mustache Template>
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: TextClassificationECSCluster
+
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  ECSInstanceProfile:
+    DependsOn: IAMRole
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: InstanceProfile
+      Roles:
+        - !Ref IAMRole
+
+  EC2Instance:
+    DependsOn: ECSInstanceProfile
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.large
+      ImageId: ami-0c06ca6fe277114f0
+      KeyName: MacLapTop
+      SubnetId: subnet-ba1633f0
+      IamInstanceProfile: !Ref ECSInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          echo ECS_CLUSTER=TextClassificationECSCluster >> /etc/ecs/ecs.config
+          yum install -y aws-cli docker
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 491914570594.dkr.ecr.us-east-1.amazonaws.com/csce5214-repo
+          service docker start
+
+  ECSContainerTask:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: EC2Instance
+    Properties:
+      Family: text-classification-web-service-task
+      ContainerDefinitions:
+        - Name: text-classification-web-service
+          Image: 491914570594.dkr.ecr.us-east-1.amazonaws.com/csce5214-repo:latest
+          Command: [ "./docker-entrypoint.sh" ]
+          Memory: 512  # Specify the desired memory limit for the container
+          Cpu: 256
+          PortMappings:
+            - ContainerPort: 10000  # Adjust the port as needed
+              HostPort: 10000
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: EC2Instance
+    Properties:
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSContainerTask
+      DesiredCount: 1
+      LaunchType: EC2

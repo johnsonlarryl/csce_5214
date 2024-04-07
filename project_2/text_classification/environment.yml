@@ -1,0 +1,17 @@
+name: text_classification
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - matplotlib
+  - pandas
+  - pandas-datareader
+  - python=3.9.5
+  - jupyter
+  - seaborn
+  - scikit-learn
+  - scipy
+  - spacy
+  - textblob
